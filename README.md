@@ -75,6 +75,20 @@ Populate `.env` with `BLUESKY_HANDLE` and `BLUESKY_PASSWORD` as above, then invo
 graphlex
 ```
 
+Use a Bluesky app password rather than your regular account password. If
+authentication fails, Graphlex reports the configuration problem and exits
+without printing a traceback.
+
+The CLI uses a compact animated status line while it collects posts and runs
+the analyses. The status includes completed percentage and an estimated time
+remaining, and it does not print every Bluesky page, cursor, or generated file;
+warnings and configuration errors remain visible.
+
+The configuration prompt includes blue controls for verbose output. Choose
+`[V] Verbose` before starting, or press `V` while the run is active to open or
+close the extended view. The extended view shows page and output details while
+the default view remains compact.
+
 ## 4. Dependencies
 
 Core dependencies are resolved automatically via pip and declared in `pyproject.toml`:

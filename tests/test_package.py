@@ -10,6 +10,66 @@ def test_search_params_omit_initial_cursor():
     assert params.cursor is None
 
 
+def test_progress_indicator_reports_percentage_and_eta():
+    from app.main import ProgressIndicator
+
+    progress = ProgressIndicator()
+    progress.start("Working", total=4)
+    progress.update("Working", completed=2)
+
+    rendered = progress._render()
+    progress.stop()
+
+    assert "50.0%" in rendered
+    assert "ETA" in rendered
+    assert "V:OFF" in rendered
+
+
+def test_verbose_log_is_single_line_when_not_interactive(capsys):
+    from app.main import ProgressIndicator
+
+    progress = ProgressIndicator(verbose=True)
+    progress.verbose_log("page 2, 99 posts")
+
+    output = capsys.readouterr().out
+    assert output.count("[verbose]") == 1
+    assert "\033[K" not in output
+
+
+def test_main_handles_keyboard_interrupt(capsys, monkeypatch):
+    from app import main as main_module
+
+    def interrupt():
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(main_module, "_run_collection_and_analysis", interrupt)
+
+    assert main_module.main() == 130
+    output = capsys.readouterr().out
+    assert "Operation cancelled by user (Ctrl+C)." in output
+    assert "No further posts or analysis will be processed." in output
+
+
+def test_verbose_toggle_hides_and_restores_history(capsys):
+    from app.main import ProgressIndicator
+
+    progress = ProgressIndicator(verbose=True)
+    progress._interactive = True
+    progress.verbose_log("page 2, 99 posts")
+    progress._toggle_verbose()
+    hidden_output = capsys.readouterr().out
+
+    assert progress._verbose is False
+    assert progress._verbose_history == ["page 2, 99 posts"]
+    assert "\033[1A" in hidden_output
+
+    progress._toggle_verbose()
+    restored_output = capsys.readouterr().out
+    assert progress._verbose is True
+    assert restored_output.count("[verbose]") == 1
+    assert "page 2, 99 posts" in restored_output
+
+
 def test_import_networklens():
     networklens = importlib.import_module("networklens")
     assert getattr(networklens, "__version__", None)

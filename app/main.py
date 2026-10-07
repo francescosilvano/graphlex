@@ -6,6 +6,7 @@ Provides `main()` entry point for console script.
 import json
 import os
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from itertools import combinations
@@ -13,6 +14,7 @@ from itertools import combinations
 import matplotlib.pyplot as plt
 import pandas as pd
 from atproto import Client, models
+from atproto_client.exceptions import UnauthorizedError
 from textblob import TextBlob
 
 # --- IMPORT SHARED CONFIGURATION ---
@@ -38,6 +40,163 @@ DATE_START = DEFAULT_DATE_START
 DATE_END = DEFAULT_DATE_END
 OUTPUT_DIR = DEFAULT_OUTPUT_DIR
 LOCATION_KEYWORDS = DEFAULT_LOCATION_KEYWORDS.copy()
+VERBOSE_ENABLED = False
+BLUE = "\033[94m"
+RESET = "\033[0m"
+
+
+class ProgressIndicator:
+    """Render one compact animated status line for long-running operations."""
+
+    def __init__(self, verbose=False):
+        self._frames = "|/-\\"
+        self._frame = 0
+        self._message = ""
+        self._running = False
+        self._thread = None
+        self._interactive = sys.stdout.isatty()
+        self._verbose = verbose
+        self._input_thread = None
+        self._input_running = False
+        self._output_lock = threading.Lock()
+        self._verbose_history = []
+        self._total = 0
+        self._completed = 0
+        self._started_at = None
+
+    def start(self, message, total=None):
+        self._message = message
+        if total is not None:
+            self._total = total
+            self._completed = 0
+            self._started_at = time.monotonic()
+        self._running = True
+        if self._interactive:
+            self._thread = threading.Thread(target=self._animate, daemon=True)
+            self._thread.start()
+            self._start_input_listener()
+        else:
+            print(self._render())
+
+    def update(self, message, completed=None):
+        self._message = message
+        if completed is not None:
+            self._completed = min(completed, self._total)
+        if not self._interactive and self._running:
+            print(self._render())
+
+    def stop(self, message=None):
+        self._running = False
+        self._input_running = False
+        if self._thread:
+            self._thread.join()
+            self._thread = None
+        if self._input_thread:
+            self._input_thread.join(timeout=0.5)
+            self._input_thread = None
+        if self._interactive:
+            with self._output_lock:
+                sys.stdout.write("\r\033[K")
+                if message:
+                    sys.stdout.write(f"{message}\n")
+                sys.stdout.flush()
+        elif message:
+            print(message)
+
+    def verbose_log(self, message):
+        """Print a detail only while the extended view is open."""
+        with self._output_lock:
+            if not self._verbose:
+                return
+            self._verbose_history.append(message)
+            if not self._interactive:
+                print(f"[verbose] {message}")
+                return
+            sys.stdout.write("\r\033[K")
+            sys.stdout.write(f"{BLUE}[verbose]{RESET} {message}\n")
+            sys.stdout.write(
+                f"\r{self._frames[self._frame % len(self._frames)]} {self._render()}"
+            )
+            sys.stdout.flush()
+
+    def _toggle_verbose(self):
+        with self._output_lock:
+            self._verbose = not self._verbose
+            if self._interactive:
+                self._redraw_with_history_locked()
+
+    def _redraw_with_history_locked(self):
+        """Redraw the status line and visible verbose history atomically."""
+        if self._verbose:
+            sys.stdout.write("\r\033[K")
+            for message in self._verbose_history:
+                sys.stdout.write(f"{BLUE}[verbose]{RESET} {message}\n")
+            sys.stdout.write(
+                f"\r{self._frames[self._frame % len(self._frames)]} {self._render()}"
+            )
+        else:
+            history_lines = len(self._verbose_history)
+            sys.stdout.write("\r\033[K")
+            for _ in range(history_lines):
+                sys.stdout.write("\033[1A\r\033[K")
+            sys.stdout.write(
+                f"\r{self._frames[self._frame % len(self._frames)]} {self._render()}"
+            )
+        sys.stdout.flush()
+
+    def _start_input_listener(self):
+        if self._input_thread and self._input_thread.is_alive():
+            return
+        self._input_running = True
+        self._input_thread = threading.Thread(
+            target=self._listen_for_toggle,
+            daemon=True
+        )
+        self._input_thread.start()
+
+    def _listen_for_toggle(self):
+        try:
+            import msvcrt
+            while self._input_running:
+                if msvcrt.kbhit() and msvcrt.getwch().lower() == "v":
+                    self._toggle_verbose()
+                time.sleep(0.05)
+        except ImportError:
+            return
+
+    def _clear_line(self):
+        if self._interactive:
+            with self._output_lock:
+                sys.stdout.write("\r\033[K")
+                sys.stdout.flush()
+
+    def _animate(self):
+        while self._running:
+            frame = self._frames[self._frame % len(self._frames)]
+            with self._output_lock:
+                sys.stdout.write(f"\r{frame} {self._render()}")
+                sys.stdout.flush()
+            self._frame += 1
+            time.sleep(0.12)
+
+    def _render(self):
+        if not self._total:
+            return self._message
+        percentage = self._completed / self._total * 100
+        eta = self._format_eta()
+        verbose = f" | {BLUE}V:{'ON' if self._verbose else 'OFF'}{RESET}"
+        return f"{self._message} | {percentage:5.1f}% | ETA {eta}{verbose}"
+
+    def _format_eta(self):
+        if not self._started_at or self._completed <= 0:
+            return "--:--"
+        elapsed = time.monotonic() - self._started_at
+        remaining = elapsed / self._completed * (self._total - self._completed)
+        minutes, seconds = divmod(max(0, int(remaining)), 60)
+        hours, minutes = divmod(minutes, 60)
+        if hours:
+            return f"{hours:d}:{minutes:02d}:{seconds:02d}"
+        return f"{minutes:02d}:{seconds:02d}"
 
 
 def _search_params(keyword, cursor=None):
@@ -49,58 +208,30 @@ def _search_params(keyword, cursor=None):
 
 
 def display_configuration():
-    """Display current configuration settings to the user."""
-    print("\n" + "="*80)
-    print("CONFIGURATION REVIEW")
-    print("="*80)
-
-    print("\nANALYSIS CONFIGURATIONS:")
-    for idx, config in enumerate(ANALYSIS_CONFIGS, 1):
-        print(f"   {idx}. {config['name']}: {config['description']}")
-        print(f"      Keywords: {len(config['keywords'])}")
-
-    print(f"\nTOTAL UNIQUE KEYWORDS: {len(KEYWORDS)}")
-    print(f"   - Main keywords: {len(MAIN_KEYWORDS)}")
-    print(f"   - Group 4 keywords: {len(GROUP_KEYWORDS)}")
-    print(f"   - Extra keywords: {len(EXTRA_KEYWORDS)}")
-
-    print(f"\nDATE RANGE:")
-    print(f"   Start: {DATE_START.strftime('%Y-%m-%d')}")
-    print(f"   End: {DATE_END.strftime('%Y-%m-%d')}")
-
-    print(f"\nLOCATION FILTERS:")
-    print(f"   {', '.join(LOCATION_KEYWORDS)}")
-
-    print(f"\nOUTPUT DIRECTORY:")
-    print(f"   {OUTPUT_DIR}")
-
-    print(f"\nCREDENTIALS:")
-    if HANDLE and PASSWORD:
-        print(f"   Handle: {HANDLE}")
-        print("   Password: ****** (configured)")
-    else:
-        print("   WARNING: Credentials not found in environment variables!")
-
-    print("\n" + "="*80)
+    """Display a concise summary of the active settings."""
+    print(
+        f"\nGraphlex: {len(KEYWORDS)} keywords | "
+        f"{DATE_START:%Y-%m-%d} to {DATE_END:%Y-%m-%d} | "
+        f"output: {OUTPUT_DIR}"
+    )
 
 
 def confirm_start():
     """Prompt user to confirm or modify settings before starting."""
+    global VERBOSE_ENABLED
+
     display_configuration()
 
-    print("\nOptions:")
-    print("  1. Start analysis with current settings")
-    print("  2. Modify date range")
-    print("  3. Modify location keywords")
-    print("  4. Modify output directory")
-    print("  5. Modify all settings")
-    print("  6. Exit")
+    print(
+        f"{BLUE}[1] Start  [2] Dates  [3] Locations  [4] Output  "
+        f"[5] All settings  [6] Exit  [V] Verbose: "
+        f"{'ON' if VERBOSE_ENABLED else 'OFF'}{RESET}"
+    )
 
     while True:
         choice = input("\nEnter your choice (1-6): ").strip()
 
         if choice == "1":
-            print("\nStarting analysis...")
             return True
         elif choice == "2":
             modify_dates()
@@ -117,8 +248,11 @@ def confirm_start():
         elif choice == "6":
             print("\nAnalysis cancelled by user.")
             return False
+        elif choice.lower() == "v":
+            VERBOSE_ENABLED = not VERBOSE_ENABLED
+            display_configuration()
         else:
-            print("Invalid choice. Please enter 1-6.")
+            print("Invalid choice. Choose a blue button or press V.")
 
 
 def modify_dates():
@@ -226,33 +360,48 @@ def _run_collection_and_analysis():
         })
 
     # --- LOGIN ---
-    print("\nConnecting to Bluesky...")
+    progress = ProgressIndicator(verbose=VERBOSE_ENABLED)
+    progress.start("Connecting to Bluesky")
     client = Client()
-    client.login(HANDLE, PASSWORD)
-    print("Login successful!")
-
-    print("\n" + "="*80)
-    print("COLLECTING DATA FOR ALL KEYWORDS (ONCE)")
-    print(f"Total keywords: {len(KEYWORDS)}")
-    print("="*80)
+    try:
+        client.login(HANDLE, PASSWORD)
+    except UnauthorizedError:
+        progress.stop()
+        message = (
+            "Authentication failed. Check BLUESKY_HANDLE and "
+            "BLUESKY_PASSWORD in .env. Use a Bluesky app password."
+        )
+        if archive:
+            archive.add_error(message)
+            archive.finalize_run()
+        print(f"ERROR: {message}")
+        return False
+    progress.stop("Connected to Bluesky")
+    total_steps = len(KEYWORDS) + len(ANALYSIS_CONFIGS)
+    progress.start("Collecting posts", total=total_steps)
 
     records = []
 
-    for keyword in KEYWORDS:
+    for keyword_index, keyword in enumerate(KEYWORDS):
         cursor = None
         page_count = 0
         while True:
             if page_count >= 1000:
                 break
-            print(f"\nSearching posts with keyword: {keyword}")
+            progress.update(
+                f"Collecting posts with keyword '{keyword}'",
+                completed=keyword_index
+            )
             try:
                 params = _search_params(keyword, cursor)
                 feed = client.app.bsky.feed.search_posts(params)
                 cursor = json.loads(feed.json()).get("cursor")
                 page_count += 1
                 posts = feed.posts or []
-                print(f"   Found {len(posts)} results | reached cursor {cursor}")
-
+                progress.verbose_log(
+                    f"{keyword}: page {page_count}, {len(posts)} posts, "
+                    f"cursor received={bool(cursor)}"
+                )
                 for post in posts:
                     text = getattr(post.record, "text", "")
                     created_at = getattr(post.record, "created_at", "")
@@ -318,13 +467,17 @@ def _run_collection_and_analysis():
                 time.sleep(2)
 
             except Exception as e:
+                progress.stop()
                 print(f"WARNING: Error searching for '{keyword}': {e}")
+                progress.start("Collecting posts")
                 continue
 
-    print("\n" + "="*80)
-    print(f"DATA COLLECTION COMPLETE: {len(records)} total posts collected")
-    print("Now filtering and saving for each analysis...")
-    print("="*80)
+        progress.update(
+            f"Collected keyword {keyword_index + 1}/{len(KEYWORDS)}",
+            completed=keyword_index + 1
+        )
+
+    progress.stop(f"Collected {len(records)} posts")
 
     if records:
         if archive:
@@ -337,6 +490,7 @@ def _run_collection_and_analysis():
             config_keywords = analysis_config["keywords"]
             description = analysis_config["description"]
 
+            progress.stop()
             if archive:
                 analysis_output_dir = archive.get_analysis_dir(config_name)
             else:
@@ -345,22 +499,15 @@ def _run_collection_and_analysis():
 
             output_file = f"{analysis_output_dir}/bluesky_posts_complex.csv"
 
-            print("\n" + "="*80)
-            print(f"ANALYSIS {config_idx}/3: {description}")
-            print(f"Keywords: {len(config_keywords)}")
-            print(f"Output directory: {analysis_output_dir}")
-            print("="*80)
+            progress.start(
+                f"Analysis {config_idx}/{len(ANALYSIS_CONFIGS)}: {config_name}"
+            )
 
             mask = df_all['keyword'].isin(config_keywords)
             df = df_all[mask].copy()
 
-            filtered_count = len(df)
-            total_count = len(df_all)
-            print(f"Filtered {filtered_count} posts (from {total_count} total)")
-
             if len(df) > 0:
                 df.to_csv(output_file, index=False)
-                print(f"Saved {len(df)} posts in '{output_file}'")
                 
                 if archive:
                     archive.add_file(f"{config_name}/bluesky_posts_complex.csv")
@@ -377,12 +524,12 @@ def _run_collection_and_analysis():
                 sentiment_file = f"{analysis_output_dir}/sentiment_distribution.png"
                 plt.savefig(sentiment_file, dpi=300, bbox_inches='tight')
                 plt.close(fig)
-                print(f"Saved sentiment chart in '{sentiment_file}'")
-                
                 if archive:
                     archive.add_file(f"{config_name}/sentiment_distribution.png")
 
-                print(f"\nCalculating co-occurrences for {len(config_keywords)} keywords...")
+                progress.update(
+                    f"Analysis {config_idx}: calculating co-occurrences"
+                )
                 new_df = {"w1": [], "w2": [], "n": []}
                 for kws in list(combinations(config_keywords, 2)):
                     all_ks = None
@@ -397,20 +544,35 @@ def _run_collection_and_analysis():
 
                 grafo_file = f"{analysis_output_dir}/grafo.xlsx"
                 pd.DataFrame(new_df).to_excel(grafo_file)
-                print(f"Saved co-occurrence matrix in '{grafo_file}'")
-                
                 if archive:
                     archive.add_file(f"{config_name}/grafo.xlsx")
                     archive.update_results_summary(config_name, {
                         "posts_count": len(df),
                         "keywords_count": len(config_keywords)
                     })
+                progress.verbose_log(
+                    f"{config_name}: wrote analysis outputs to "
+                    f"{analysis_output_dir}"
+                )
+                progress.update(
+                    f"Completed analysis {config_idx}/{len(ANALYSIS_CONFIGS)}",
+                    completed=len(KEYWORDS) + config_idx
+                )
             else:
+                progress.stop()
                 print(f"WARNING: No posts found for {description}.")
+                progress.start(
+                    f"Analysis {config_idx}/{len(ANALYSIS_CONFIGS)}: {config_name}"
+                )
+                progress.update(
+                    f"Completed analysis {config_idx}/{len(ANALYSIS_CONFIGS)}",
+                    completed=len(KEYWORDS) + config_idx
+                )
                 if archive:
                     archive.add_warning(f"No posts found for {description}")
 
     else:
+        progress.stop()
         print("\nWARNING: No posts found with the specified criteria.")
         if archive:
             archive.add_warning("No posts found with the specified criteria")
@@ -419,16 +581,20 @@ def _run_collection_and_analysis():
     if archive:
         archive.finalize_run()
 
-    print("\n" + "="*80)
-    print("ALL ANALYSES COMPLETE!")
-    print("="*80)
+    progress.stop("Analysis complete")
 
     return True
 
 
 def main(argv=None):
     """Console entry point."""
-    _run_collection_and_analysis()
+    try:
+        result = _run_collection_and_analysis()
+    except KeyboardInterrupt:
+        print("\n\nOperation cancelled by user (Ctrl+C).")
+        print("No further posts or analysis will be processed.")
+        return 130
+    return 0 if result else 1
 
 
 if __name__ == "__main__":

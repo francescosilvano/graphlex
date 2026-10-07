@@ -47,13 +47,7 @@ class RunArchive:
             "warnings": []
         }
         self._save_manifest()
-        print(f"\n{'='*80}")
-        print(f"ARCHIVE INITIALIZED")
-        print(f"{'='*80}")
-        print(f"Run ID: {self.run_id}")
-        print(f"UUID: {self.run_uuid}")
-        print(f"Directory: {self.run_dir}")
-        print(f"{'='*80}\n")
+        print(f"Archive: {self.run_id}")
         return str(self.run_dir)
 
     def get_analysis_dir(self, analysis_name: str) -> str:
@@ -105,15 +99,10 @@ class RunArchive:
         self.manifest["duration_seconds"] = round(duration, 2)
         self._save_manifest()
         self._update_index()
-        print(f"\n{'='*80}")
-        print(f"ARCHIVE FINALIZED")
-        print(f"{'='*80}")
-        print(f"Run ID: {self.run_id}")
-        print(f"Duration: {duration:.2f} seconds")
-        print(f"Files generated: {len(self.manifest['files_generated'])}")
-        print(f"Errors: {len(self.errors)}")
-        print(f"Warnings: {len(self.warnings)}")
-        print(f"{'='*80}\n")
+        print(
+            f"Archive finalized: {self.run_id} | "
+            f"{duration:.2f}s | {len(self.manifest['files_generated'])} files"
+        )
 
     def _save_manifest(self):
         if not self.run_dir:

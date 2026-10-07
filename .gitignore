@@ -19,3 +19,5 @@ exports/
 
 # ignore build/packaging metadata
 *.egg-info/
+
+.env

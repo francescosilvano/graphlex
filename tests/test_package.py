@@ -70,6 +70,30 @@ def test_verbose_toggle_hides_and_restores_history(capsys):
     assert "page 2, 99 posts" in restored_output
 
 
+def test_verbose_history_keeps_pages_logged_while_hidden(capsys):
+    from app.main import ProgressIndicator
+
+    progress = ProgressIndicator(verbose=False)
+    progress._interactive = True
+    progress.verbose_log("page 5, 97 posts")
+    progress.verbose_log("page 35, 99 posts")
+    progress.verbose_log("page 36, 96 posts")
+
+    assert progress._verbose_history == [
+        "page 5, 97 posts",
+        "page 35, 99 posts",
+        "page 36, 96 posts",
+    ]
+    assert capsys.readouterr().out == ""
+
+    progress._toggle_verbose()
+    restored_output = capsys.readouterr().out
+    assert restored_output.count("[verbose]") == 3
+    assert "page 5, 97 posts" in restored_output
+    assert "page 35, 99 posts" in restored_output
+    assert "page 36, 96 posts" in restored_output
+
+
 def test_import_networklens():
     networklens = importlib.import_module("networklens")
     assert getattr(networklens, "__version__", None)

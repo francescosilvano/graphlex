@@ -106,9 +106,9 @@ class ProgressIndicator:
     def verbose_log(self, message):
         """Print a detail only while the extended view is open."""
         with self._output_lock:
+            self._verbose_history.append(message)
             if not self._verbose:
                 return
-            self._verbose_history.append(message)
             if not self._interactive:
                 print(f"[verbose] {message}")
                 return

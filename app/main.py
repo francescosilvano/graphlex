@@ -40,6 +40,14 @@ OUTPUT_DIR = DEFAULT_OUTPUT_DIR
 LOCATION_KEYWORDS = DEFAULT_LOCATION_KEYWORDS.copy()
 
 
+def _search_params(keyword, cursor=None):
+    """Build Bluesky search parameters without sending a placeholder cursor."""
+    params = {"q": keyword.lower(), "limit": 100}
+    if cursor:
+        params["cursor"] = cursor
+    return models.AppBskyFeedSearchPosts.Params(**params)
+
+
 def display_configuration():
     """Display current configuration settings to the user."""
     print("\n" + "="*80)
@@ -231,17 +239,17 @@ def _run_collection_and_analysis():
     records = []
 
     for keyword in KEYWORDS:
-        cursor = '0'
+        cursor = None
+        page_count = 0
         while True:
-            if cursor is None or int(cursor) > 1000:
+            if page_count >= 1000:
                 break
             print(f"\nSearching posts with keyword: {keyword}")
             try:
-                params = models.AppBskyFeedSearchPosts.Params(
-                    q=keyword.lower(), limit=100, cursor=cursor
-                )
+                params = _search_params(keyword, cursor)
                 feed = client.app.bsky.feed.search_posts(params)
-                cursor = json.loads(feed.json())["cursor"]
+                cursor = json.loads(feed.json()).get("cursor")
+                page_count += 1
                 posts = feed.posts or []
                 print(f"   Found {len(posts)} results | reached cursor {cursor}")
 

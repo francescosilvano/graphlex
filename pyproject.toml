@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "networklens-semantic-network-analyzer"
+name = "graphlex"
 version = "0.0.1"
 description = "Keyword co-occurrence network analyzer (Bluesky-focused)"
 readme = "README.md"
@@ -35,19 +35,20 @@ dependencies = [
 ]
 
 [project.scripts]
-networklens = "networklens.main:main"
+graphlex = "app.main:main"
+networklens = "app.main:main"
 
 [project.urls]
-Homepage = "https://github.com/francescosilvano/networklens-semantic-network-analyzer"
-Repository = "https://github.com/francescosilvano/networklens-semantic-network-analyzer"
-Issues = "https://github.com/francescosilvano/networklens-semantic-network-analyzer/issues"
+Homepage = "https://github.com/francescosilvano/graphlex"
+Repository = "https://github.com/francescosilvano/graphlex"
+Issues = "https://github.com/francescosilvano/graphlex/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["networklens*"]
+include = ["app*", "graphlex*", "networklens*"]
 
 [tool.setuptools.package-data]
-"networklens" = ["settings.json"]
+"app" = ["settings.json"]
 
 [project.optional-dependencies]
 dev = ["pylint", "pytest", "build"]

@@ -1,6 +1,15 @@
 import importlib
 
 
+def test_search_params_omit_initial_cursor():
+    from app.main import _search_params
+
+    params = _search_params("Green Transition")
+
+    assert params.q == "green transition"
+    assert params.cursor is None
+
+
 def test_import_networklens():
     networklens = importlib.import_module("networklens")
     assert getattr(networklens, "__version__", None)

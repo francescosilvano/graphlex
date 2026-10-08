@@ -35,12 +35,12 @@ Run management utilities:
 
 ## Customizing Keywords
 
-Edit `scripts/settings.json` to modify the keyword sets:
+Edit `settings.json` in the project root to modify keywords and other settings:
 
 ```json
 
 {
-    "MAIN_KEYWORDS": [
+    "1ST_GROUP": [
         "main_keyword_1",
         "main_keyword_2",
         "main_keyword_3",
@@ -52,7 +52,7 @@ Edit `scripts/settings.json` to modify the keyword sets:
         "main_keyword_9",
         "main_keyword_10"
     ],
-    "GROUP_KEYWORDS": [
+    "2ND_GROUP": [
     "group_keyword_1",
     "group_keyword_2",
     "group_keyword_3",
@@ -64,27 +64,30 @@ Edit `scripts/settings.json` to modify the keyword sets:
     "group_keyword_9",
     "group_keyword_10"
     ],
-    "EXTRA_KEYWORDS": [
+    "3RD_GROUP": [
         "extra_keyword_1",
         "extra_keyword_2",
         "extra_keyword_3",
         "extra_keyword_4",
         "extra_keyword_5"
     ],
-    "LOCATION_KEYWORDS": [
-        "location-1",
-        "location-2",
-        "location-3"
-    ]
+    "LOCATION_KEYWORDS": ["california", "quebec", "norway"],
+    "DATE_START": "2023-01-01",
+    "DATE_END": "2025-11-25",
+    "MIN_CO_OCCURRENCES": 1,
+    "INPUT_FILE": "../exports/bluesky_posts_complex.csv",
+    "OUTPUT_DIR": "../exports",
+    "ARCHIVE_ENABLED": true,
+    "ARCHIVE_DIR": "../exports/runs"
 }
-
-KEYWORDS = [
-    "Climate Change", "Global Warming", "Sustainability", "Renewable Energy",
-    # Add your keywords here...
-]
 ```
 
 All keyword searches are **case-insensitive** for comprehensive matching.
+
+The CLI reads this file when it starts. The first analysis uses `1ST_GROUP`,
+the second adds `2ND_GROUP`, and the full analysis adds `3RD_GROUP`. To use
+another file, set `GRAPHLEX_SETTINGS_FILE` to its path before launching the CLI.
+Dates must use `YYYY-MM-DD` format.
 
 ## Environment Variables
 

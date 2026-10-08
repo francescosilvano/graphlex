@@ -111,7 +111,16 @@ pip install graphlex[dev]
 
 ## 5. Usage
 
-Analysis parameters — keyword lists, fetch limits, and related configuration — are defined in `graphlex/config.py`. Invoking the CLI executes the full pipeline: data collection, graph construction, and output generation, writing results to `exports/runs/<timestamp_uuid>/`.
+Settings are loaded at startup from the editable `settings.json` file in the
+project root. Update the `1ST_GROUP`, `2ND_GROUP`, and `3RD_GROUP` arrays,
+the date range, locations, output paths, or analysis threshold, then run
+`graphlex` again. Searches are case-insensitive. You can use the
+`GRAPHLEX_SETTINGS_FILE` environment variable to point to a different JSON
+file. If no project-level file is present, the bundled defaults are used.
+
+Invoking the CLI executes the full pipeline: data collection, graph
+construction, and output generation, writing results to
+`exports/runs/<timestamp_uuid>/`.
 
 The configuration supports variation in fetch period, keyword composition, and inclusion of sentiment analysis. Multiple configurations may be run in parallel for comparative analysis across parameter sets. Resulting GraphML files may be loaded into external network-analysis software for interactive exploration; CSV outputs support direct quantitative analysis of computed metrics.
 

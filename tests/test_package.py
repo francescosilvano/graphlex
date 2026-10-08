@@ -1,4 +1,6 @@
 import importlib
+import json
+from pathlib import Path
 
 
 def test_search_params_omit_initial_cursor():
@@ -113,3 +115,22 @@ def test_keywords_include_required():
     actual_lower = {k.lower() for k in config.KEYWORDS}
     for kw in expected:
         assert kw.lower() in actual_lower, f"Missing keyword: {kw}"
+
+
+def test_user_keyword_file_is_valid_and_used():
+    settings_file = Path(__file__).parents[1] / "settings.json"
+    settings = json.loads(settings_file.read_text(encoding="utf-8"))
+
+    assert settings["1ST_GROUP"]
+    assert settings["2ND_GROUP"]
+    assert settings["3RD_GROUP"]
+    assert settings["DATE_START"] == "2023-01-01"
+    assert settings["DATE_END"] == "2025-11-25"
+
+    from app import config
+
+    assert config.KEYWORDS == (
+        settings["1ST_GROUP"]
+        + settings["2ND_GROUP"]
+        + settings["3RD_GROUP"]
+    )

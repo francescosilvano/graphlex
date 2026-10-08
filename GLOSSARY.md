@@ -51,7 +51,7 @@ An optional list of location terms used to restrict collected posts or authors.
 A word or phrase that Graphlex searches for in post text. Keywords are matched
 case-insensitively, so `CO2` and `co2` are treated as the same term.
 
-### Main keywords
+### Keyword groups
 
 The shared keyword set used as the core of the analysis, including terms such as
 `green transition`, `global warming`, and `renewable energy`.
@@ -68,7 +68,7 @@ energy`, `net zero`, and `heatwaves`.
 ### Analysis configuration
 
 A named combination of keywords and settings. The default configurations are
-`main_keywords`, `main_plus_our`, and `full_analysis`.
+`1st_group`, `1st_plus_2nd_group`, and `all_groups`.
 
 ### Case-insensitive matching
 
@@ -270,4 +270,3 @@ metrics such as degree, strength, and centrality.
 
 Command-line interface. Graphlex can be started locally with the `graphlex`
 command after installation.
-

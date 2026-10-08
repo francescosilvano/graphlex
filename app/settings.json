@@ -1,5 +1,5 @@
 {
-    "MAIN_KEYWORDS": [
+    "1ST_GROUP": [
         "green transition",
         "greenhouse effect",
         "loss of biodiversity",
@@ -11,7 +11,7 @@
         "renewable energy",
         "misinformation"
     ],
-    "GROUP_KEYWORDS": [
+    "2ND_GROUP": [
         "ecosystem",
         "fossil fuels",
         "energy consumption",
@@ -23,7 +23,7 @@
         "rain",
         "electric vehicles"
     ],
-    "EXTRA_KEYWORDS": [
+    "3RD_GROUP": [
         "natural disaster",
         "clean energy",
         "net zero",
@@ -34,5 +34,12 @@
         "california",
         "quebec",
         "norway"
-    ]
+    ],
+    "DATE_START": "2023-01-01",
+    "DATE_END": "2025-11-25",
+    "MIN_CO_OCCURRENCES": 1,
+    "INPUT_FILE": "../exports/bluesky_posts_complex.csv",
+    "OUTPUT_DIR": "../exports",
+    "ARCHIVE_ENABLED": true,
+    "ARCHIVE_DIR": "../exports/runs"
 }

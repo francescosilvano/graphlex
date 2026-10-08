@@ -1,0 +1,45 @@
+{
+  "1ST_GROUP": [
+    "green transition",
+    "greenhouse effect",
+    "loss of biodiversity",
+    "extreme weather events",
+    "CO2",
+    "emissions",
+    "global warming",
+    "melting glaciers",
+    "renewable energy",
+    "misinformation"
+  ],
+  "2ND_GROUP": [
+    "ecosystem",
+    "fossil fuels",
+    "energy consumption",
+    "normatives",
+    "deforestation",
+    "flooding",
+    "tesla",
+    "green policies",
+    "rain",
+    "electric vehicles"
+  ],
+  "3RD_GROUP": [
+    "natural disaster",
+    "clean energy",
+    "net zero",
+    "AI",
+    "heatwaves"
+  ],
+  "LOCATION_KEYWORDS": [
+    "california",
+    "quebec",
+    "norway"
+  ],
+  "DATE_START": "2023-01-01",
+  "DATE_END": "2025-11-25",
+  "MIN_CO_OCCURRENCES": 1,
+  "INPUT_FILE": "../exports/bluesky_posts_complex.csv",
+  "OUTPUT_DIR": "../exports",
+  "ARCHIVE_ENABLED": true,
+  "ARCHIVE_DIR": "../exports/runs"
+}

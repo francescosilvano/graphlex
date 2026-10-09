@@ -130,7 +130,7 @@ The configuration supports variation in fetch period, keyword composition, and i
 - No multilingual support or advanced NLP methods (e.g., embedding-based semantic similarity) are implemented; keyword matching is used as the basis for co-occurrence.
 - Parallel execution, compressed export formats, and searchable indexing of run history are not currently supported.
 
-## 7. Provenance and Contributors
+## 7. Contributors
 
 This project originated within the Complex Systems course at the University of Siena, academic year 2025/26. [Francesco Silvano](https://github.com/francescosilvano) is the primary author and maintainer. [Raphael](https://github.com/RaphaelNoah) contributed substantially to the refinement of the data-processing pipeline, improving the accuracy and reliability of computed results.
 

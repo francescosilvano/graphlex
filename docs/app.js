@@ -49,11 +49,8 @@ function parseCsv(csv) {
   row.push(value);
   if (row.some((cell) => cell.trim() !== '')) rows.push(row);
 
-  if (rows.length < 2) throw new Error('Add a header row and at least one data row.');
-  const headers = rows[0].map((header) => header.trim().toLowerCase());
-  const textIndex = headers.indexOf('text');
-  if (textIndex === -1) throw new Error('The CSV must contain a text column.');
-  return rows.slice(1).map((cells) => cells[textIndex] || '').filter(Boolean);
+  if (!rows.length) throw new Error('The CSV does not contain any rows.');
+  return rows.map((cells) => cells.join(' ').trim()).filter(Boolean);
 }
 
 function getKeywords() {

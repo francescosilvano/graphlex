@@ -8,6 +8,7 @@ const exampleCsv = [
 
 const elements = {
   file: document.querySelector('#csv-file'),
+  hasHeader: document.querySelector('#has-header'),
   keywords: document.querySelector('#keywords'),
   analyze: document.querySelector('#analyze'),
   loadExample: document.querySelector('#load-example'),
@@ -19,7 +20,7 @@ const elements = {
   edgeMetrics: document.querySelector('#edge-metrics')
 };
 
-function parseCsv(csv) {
+function parseCsv(csv, hasHeader) {
   const rows = [];
   let row = [];
   let value = '';
@@ -49,8 +50,9 @@ function parseCsv(csv) {
   row.push(value);
   if (row.some((cell) => cell.trim() !== '')) rows.push(row);
 
-  if (!rows.length) throw new Error('The CSV does not contain any rows.');
-  return rows.map((cells) => cells.join(' ').trim()).filter(Boolean);
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+  if (!dataRows.length) throw new Error('The CSV does not contain any data rows.');
+  return dataRows.map((cells) => cells.join(' ').trim()).filter(Boolean);
 }
 
 function getKeywords() {
@@ -144,7 +146,7 @@ function renderNetwork(network) {
 
 async function runAnalysis(csv) {
   try {
-    const documents = parseCsv(csv);
+    const documents = parseCsv(csv, elements.hasHeader.checked);
     const keywords = getKeywords();
     if (!keywords.length) throw new Error('Enter at least one keyword.');
     const network = analyze(documents, keywords);

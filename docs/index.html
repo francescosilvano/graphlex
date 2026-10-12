@@ -20,6 +20,10 @@
           <label for="csv-file" class="form-label">CSV file</label>
           <input id="csv-file" class="form-control" type="file" accept=".csv,text/csv">
           <div class="form-text">Any CSV structure is supported. Text from every cell in each row is analyzed together.</div>
+          <div class="form-check mt-2">
+            <input id="has-header" class="form-check-input" type="checkbox" checked>
+            <label for="has-header" class="form-check-label">First row contains column headers</label>
+          </div>
         </div>
         <div class="mb-3">
           <label for="keywords" class="form-label">Keywords</label>
